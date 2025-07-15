@@ -1,20 +1,20 @@
 package com.avanisoam.businesscardapp
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
@@ -24,11 +24,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,19 +38,53 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.avanisoam.businesscardapp.model.ContactInfo
+import com.avanisoam.businesscardapp.model.ProfileInfo
+import com.avanisoam.businesscardapp.presentation.DataStoreScreen
 import com.avanisoam.businesscardapp.ui.theme.BusinessCardAppTheme
+import com.avanisoam.businesscardapp.viewmodel.DataStoreViewModel
 
 class MainActivity : ComponentActivity() {
+    private val myViewModel by viewModels<DataStoreViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             BusinessCardAppTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    myViewModel.toggleSettings()
+                                }
+                            )
+                        },
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    BusinessCard()
+                    val uiState by myViewModel.uiState.collectAsState()
+
+                    if (uiState.showSettings) {
+                        DataStoreScreen(viewModel = myViewModel)
+                    } else {
+                        val profileInfo = com.avanisoam.businesscardapp.model.ProfileInfo(
+                            name = uiState.name,
+                            role = uiState.role,
+                            year = uiState.year
+                        )
+                        val contactInfo = com.avanisoam.businesscardapp.model.ContactInfo(
+                            phone = uiState.phone,
+                            handle = uiState.handle,
+                            email = uiState.email,
+                            showContactInfo = uiState.showContactInfo
+                        )
+                        BusinessCard(
+                            profileInfo = profileInfo,
+                            contactInfo = contactInfo,
+                            showContactInfo = uiState.showContactInfo
+                        )
+                    }
                 }
             }
         }
@@ -56,15 +92,27 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BusinessCard(modifier : Modifier = Modifier) {
+fun BusinessCard(
+    profileInfo: ProfileInfo,
+    contactInfo: ContactInfo,
+    showContactInfo: Boolean,
+    modifier: Modifier = Modifier
+) {
     Box(modifier = modifier) {
-        ProfileInfo(modifier = modifier.align(Alignment.Center))
-        ContactInfo(modifier = modifier.align(Alignment.BottomCenter))
+        ProfileInfo(
+            profileInfo = profileInfo,
+            modifier = modifier.align(Alignment.Center)
+        )
+        ContactInfo(
+            contactInfo = contactInfo,
+            showContactInfo = showContactInfo,
+            modifier = modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
 @Composable
-fun ProfileInfo(modifier : Modifier = Modifier) {
+fun ProfileInfo(profileInfo: ProfileInfo, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
@@ -72,42 +120,49 @@ fun ProfileInfo(modifier : Modifier = Modifier) {
     ) {
 
         Image(
-            painter = painterResource(id = R.drawable.android_logo),
+            painter = painterResource(id = R.drawable.bot_image),
             contentDescription = "Profile Picture",
             modifier = Modifier
                 .background(Color(0xFF073042))
                 .size(height = 100.dp, width = 100.dp)
-
         )
 
         Text(
-            text = "Jennifer Doe",
+            text = profileInfo.name,
             fontSize = 40.sp,
             fontWeight = FontWeight.Light,
             textAlign = TextAlign.Center,
         )
 
         Text(
-            text = "Android Developer Extraordinarie",
+            text = profileInfo.role,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             color = Color(0xFF006D3A),
         )
+
         Text(
-            text = "10 years of Experience",
+            text = "${profileInfo.year} years of Experience",
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
     }
 }
+
+
 @Composable
-fun ContactInfo(modifier : Modifier = Modifier) {
-    Column(modifier = modifier.padding(bottom = 20.dp)) {
-        ContactRow(text = "+11 (123) 444 555 666", icon = Icons.Filled.Call)
-        ContactRow(text = "@AndroidDev", icon = Icons.Filled.Share)
-        ContactRow(text = "jen.doe@android.com", icon = Icons.Filled.Email)
+fun ContactInfo(contactInfo: ContactInfo,
+                showContactInfo: Boolean,
+                modifier: Modifier
+) {
+    if (showContactInfo) {
+        Column(modifier = modifier.padding(bottom = 20.dp)) {
+            ContactRow(text = contactInfo.phone, icon = Icons.Filled.Call)
+            ContactRow(text = contactInfo.handle, icon = Icons.Filled.Share)
+            ContactRow(text = contactInfo.email, icon = Icons.Filled.Email)
+        }
     }
 }
 
